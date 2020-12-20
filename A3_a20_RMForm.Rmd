@@ -6,6 +6,8 @@ output:
   pdf_document: default
   html_document: default
 ---
+
+Code supporting this analysis is available at: https://github.com/sakshamahluwalia/sale-price-of-houses \
 ```{r include=FALSE, echo=FALSE}
 # Init Section
 
