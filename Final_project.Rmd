@@ -1,0 +1,233 @@
+---
+title: "Analysing the sale price of houses in GTA"
+author: "Saksham Ahluwalia"
+date: "December 7, 2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+Code supporting this analysis is available at: https://github.com/sakshamahluwalia/sale-price-of-houses \
+```{r include=FALSE, echo=FALSE}
+# Init Section
+
+### Import Modules
+library(knitr)
+library("ggplot2")
+library("tidyverse")
+library("kableExtra")
+library("corrplot")
+
+# ### Set working directory
+# WD_3058 = "C:/Users/saksh/Desktop/STA304/Final Paper/A3"
+# setwd(WD_3058)
+
+### Use TREB data in file "real203.csv".
+csv_file_3058 = "real203.csv"
+data <- read.csv(csv_file_3058)
+```
+
+Key words: MLR, Stepwise BIC, BIC, Backward BIC, Observational Study, Real Estate. 
+
+  Real estate should be relevant to everyone because it is considered a good investment and we all need a place to stay. For quite some time now, there has been a growing concern that real - estate prices in the Greater Toronto Region (GTA) are rising at exponential rates. This is a cause of concern for anyone who is looking to buy a house. Having a model that estimates the sale price of a house can help buyers in their decision of making their purchase. One way to come up with a model is to apply MLR. It is better suited for this situation compared to regular SLR since there can be multiple variables that affect the sales price of a house.
+  In this report we focus on detached houses from two neighborhoods - Toronto and Mississauga. A MLR model was used to check if and how the sale price of a detached house is linked to other variables such as the last list price, number of bedrooms/bathrooms etc. This is done using a stepwise BIC backward variable selection procedure. The relevant variables are then used to fit a model for sale price in GTA. In the Methodology section, I describe the data, and the model that was used in this study. Results of the model are provided in the Results section, and inferences of this data along with conclusions are presented in the Conclusion section.
+
+
+# DATA 
+
+The Data used in this study was obtained from the Toronto Real Estate Board. It includes the following variables:
+
+- ID: id corresponding to the property
+- Sale: actual sale price in CAD
+- List: last list price in CAD
+- Bedroom: number of bedrooms
+- Bathroom: number of bathrooms
+- Parking: number of parking spaces
+- Maxsqfoot: maximum square footage of the property
+- Taxes: Previous year’s taxes
+- Lot-size: area in feet
+- Location: Toronto (T) or Mississauga (M)
+
+
+**Note**: There are a lot of NULL/missing values for the **maxsqfoot** variable. This variable has been be dropped from the data set. I will also remove other cases containing NULL/missing values. This leaves us with 181 unique cases.
+
+
+```{r include=FALSE, echo=FALSE}
+# Data
+## Data cleaning
+
+### Created variable lotsize=lotwidth*lotlength to the data set.
+data <- data %>%
+  mutate(lotsize = lotwidth*lotlength)
+
+### Removed variables lotwidth and lotlength from the data set.
+data <- data %>% select(-lotwidth, -lotlength)
+
+### Dropped variable, 'maxsqfoot'
+data <- data %>% select(-maxsqfoot)
+
+### Removing NULL/missing values
+data <- na.omit(data)
+
+attach(data)
+```
+
+Table 1 includes some baseline characteristics of the variables in our data.
+```{r echo=FALSE}
+# Data
+
+### Baseline characteristics
+baseline_cat <- function(vector) {
+  mean <- mean(vector)
+  sd <- sd(vector)
+  print(mean)
+  print(sd)
+}
+
+# Means and Std deviations calculated using 'baseline_cat'
+mean_vector = c("-", 3.727, 3.399, 3.295, 1827446, 1834405, 7305.584, 6080.673, "-")
+
+sd_vector =  c("-", 0.995, 1.249, 2.386, 970866.600, 1054994, 4312.684, 7449.693, "-")
+
+# Frequency
+frequency_vector = c("-", "-", "-", "-", "-", "-", "-", "-", "T: 0.625 M: 0.375")
+
+### Building Table
+
+### Building the first column.
+params_3058 = c("ID", "bedroom", "bathroom", "parking", "sale", "list", "taxes", "lotsize", "location")
+
+### Building the Data type column.
+data_type = c("Discrete", "Discrete", "Discrete", "Discrete", "Continuous", "Continuous", "Continuous", "Continuous", "Categorical")
+
+### Building Header
+header_3058 <- data.frame(Parameter = params_3058, "Data Type"=data_type, "Mean"=mean_vector, "Sd[s]"=sd_vector, "Frequency"=frequency_vector, check.names=FALSE)
+
+### Putting columns and header together.
+kable(header_3058, caption = "Table 1 (3058)") %>%
+  kable_paper("hover", full_width = F)
+```
+
+#### Pairwise Correlation table
+
+Using the scatterplot Matrix we can see:
+that there is a strong positive linear trend between sale price and list price. 
+There is also a strong positive linear relationship between list price and taxes.
+Correlation among other variables is not clear from the scatterplot matrix.
+
+
+```{r echo=FALSE}
+
+# ### Pairwise Correlation Matrix
+# matrix <- cor(data[c(2,3,4,5,6,7,9)])
+# corrplot(matrix, method = "number", col = "black", tl.col = "black", cl.pos = "n", title = "Fig 1: Part 2(b) Correlation Matrix (3058)", mar=c(0,0,1,0))
+
+### Scatterplot Matrix
+pairs(data[c(2,3,4,5,6,7,9)],
+      main="Fig 2 Scatterplot Matrix (3058)")
+```
+
+# MODEL
+```{r include=FALSE, echo=FALSE}
+
+# Methods and Model section
+## Part (i)
+
+### Fitting an additive linear regression model for sale price.
+model_1 <- lm(sale ~ list + bedroom + bathroom + parking + taxes + lotsize + location, data = data)
+```
+
+An additive multiple linear regression was used with Sale price being the response variable. The model can be defined as follows:
+$$ y_F = 52752.3036 + 0.8253x_1 + 13907.1387x_2 + 11139.0194x_3 - 16396.9727x_4 + 1.7465x_5 + 21.9112x_6 + 92139.8946x_7 $$
+The predictor variables in the above equation are defined as follows: \
+$x_1$: The last list price of the property in Canadian dollars. \
+$x_2$: The total number of bedrooms. \
+$x_3$: The total number of bathrooms. \
+$x_4$: The total number of parking spots. \
+$x_5$: New variable Lot Size. \
+$x_6$: Previous year’s property tax. \
+$x_7$: Located in Toronto. \
+
+$y_F$ **(response variable)**: Sale price
+
+#### BIC Backward elimination
+
+To make the above model simpler a BIC backward selection is performed. Backward elimination procedure starts with all the variables in the model. At each step, the variable with the highest p-value from the individual T test is removed until all variables have been deleted from the model or the information criterion increases [1, pg 236]. We choose BIC backward selection procedure because it favors simpler models compared to the AIC forward selection which can cause overfitting. 
+
+```{r include=FALSE, echo=FALSE}
+# Methods and Model section
+## Part (iii)
+
+### Performing BIC backward elimination on model 'model_1'.
+BIC_back_model <- step(model_1, direction = "backward", k=log(142))
+```
+
+After performing BIC backward elimination on the additive linear regression model stated above we get the following model:
+$$ y_{BIC} = 64056.020 + 0.835x_1 + 21.587x_2 + 125438.7143x_3 $$
+The variables in the above equation are defined as follows: \
+$x_1$: The last list price of the property in Canadian dollars. \
+$x_2$: Previous year’s property tax. \
+$x_3$: Located in Toronto. \
+
+```{r echo=FALSE}
+
+# select cases in Toronto.
+Toronto_data <- data %>%
+  filter(data$location == "T")
+
+# select cases in Mississauga.
+Mississauga_data <- data %>% 
+  filter(data$location == "M")
+
+model_T <- lm(sale ~ list + taxes, data = Toronto_data)
+
+model_M <- lm(sale ~ list + taxes, data = Mississauga_data)
+```
+
+Furthermore, two different models are fit to find the expected sale price of detached houses in each neighborhood. The model representing the sale price of detached houses in Toronto is defined below: \
+
+$$ y_T = 173216.651 + 0.8299x_1 + 25.2149x_2 $$
+Similarly the model representing the sale price of detached houses in Mississauga is defined as: \
+
+$$ y_M = 91206.3519 + 0.8319x_1 + 18.5417x_2 $$
+The variables in the above equation are defined as follows: \
+$x_1$: The last list price of the property in Canadian dollars. \
+$x_2$: Previous year’s property tax. \
+
+# Results
+
+Our Global F-test is significant at 95% level which suggests that there are one or many predictor variables which can be used to estimate Sale price of a property in our data set. Looking at the individual T tests of List price, Parking and Taxes we can see that they are significant at 95% and therefore using these variables in our model is appropriate. The rest can be dropped or ignored because of a non-significant T test at a 95% threshold.
+
+Below in Table 2 we can see the estimated regression coefficients and the p-values for the corresponding t-tests for the coefficients expected by the additive model mentioned above.
+
+```{r echo=FALSE}
+# Methods and Model section
+## Part (i)
+
+### recording p-values for t-tests for coefficients for model_1
+kable(round(summary(model_1)$coefficient[, c(1, 3, 4)], 4) , caption = "Table 2 (3058)") %>%
+  kable_paper("hover", full_width = F)
+```
+
+Using the above mentioned significant predictor variables we fit two different models one for each neighborhood. From the individual models we can see that there is a higher tax rate observed in Toronto compared to Mississauga. Ignoring list price and taxes there is a difference of approximately 82,000 CAD in between the two neighborhoods. To conclude, according to our sample and models detached houses are more expensive in Toronto compared to Mississauga.
+
+# Discussions
+
+With real-estate prices soaring in GTA tools are needed to assess the value of properties. Using a BIC backward selection procedure to select variables and data obtained from TREB a MLR model is fit to find the expected Sales price of a detached house in two different neighborhoods Toronto and Mississauga. We found that there is a difference in the expected price in the two neighborhoods. We found that houses in Toronto are on average more expensive than houses in Mississauga. The tax rate also seems to be more in Toronto compared to Mississauga. These results can be used by individuals looking to buy a detached house in either Toronto and Mississauga to evaluate the value of houses they are interested in. For example we saw that detached houses in Toronto can appreciate faster overtime and therefore make prime investment opportunities.
+
+#### Weaknesses
+Only looks at 2 neighborhoods within GTA. We also had a limited amount of variables to work with. For example we did not have square footage or crime rate for the neighborhood which can be lurking variables. [2]
+
+#### Next Steps
+Next steps can include performing some more analyses: \
+
+- We should perform Cross validation on data from a different year.
+- We look at diagnostic plots to look for any violations in our assumptions.
+- We can extend the study to different neighborhoods.
+- A pooled two-sample t-test can be used in this scenario to determine if there is a statistically significant difference between the slopes of the simple linear models for the two neighborhoods. This is because our X variable (location) is categorical with two levels rather than quantitative.
+- We can look into lurking variables like crime rate and square footage.
+
+# References
+- Sheather, S. J. (2009). A modern approach to regression with R. New York: Springer. doi:https://doi.org/10.1007/978-0-387-09608-7 [1]
+- https://upside.com.au/articles/selling-your-property/selling-guide/9-surprising-factors-affect-home-value [2]
+
